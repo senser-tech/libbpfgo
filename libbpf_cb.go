@@ -22,9 +22,19 @@ func perfLostCallback(ctx unsafe.Pointer, cpu C.int, cnt C.ulonglong) {
 	}
 }
 
+type HandlerType = func(dataRaw []byte)
+
 //export ringbufferCallback
 func ringbufferCallback(ctx unsafe.Pointer, data unsafe.Pointer, size C.int) C.int {
-	ch := eventChannels.Get(uint(uintptr(ctx))).(chan []byte)
-	ch <- C.GoBytes(data, size)
+	ch := eventChannels.Get(uint(uintptr(ctx)))
+	switch ch.(type) {
+	case chan []byte:
+		ch.(chan []byte) <- C.GoBytes(data, size)
+		return C.int(0)
+	default:
+		data_raw := (*[1 << 30]byte)(unsafe.Pointer(data))[:size:size]
+		ch.(HandlerType)(data_raw)
+	}
+
 	return C.int(0)
 }

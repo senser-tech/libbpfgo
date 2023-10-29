@@ -1657,7 +1657,7 @@ func doAttachUprobe(prog *BPFProg, isUretprobe bool, pid int, path string, offse
 
 var eventChannels = rwarray.NewRWArray(maxEventChannels)
 
-func (m *Module) InitRingBuf(mapName string, eventsChan chan []byte) (*RingBuffer, error) {
+func (m *Module) InitRingBuf(mapName string, eventsChan interface{}) (*RingBuffer, error) {
 	bpfMap, err := m.GetMap(mapName)
 	if err != nil {
 		return nil, err
