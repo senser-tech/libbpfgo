@@ -338,7 +338,7 @@ type PerfBuffer struct {
 	pb         *C.struct_perf_buffer
 	bpfMap     *BPFMap
 	slot       uint
-	eventsChan chan []byte
+	eventsChan interface{}
 	lostChan   chan uint64
 	stop       chan struct{}
 	closed     bool
@@ -1757,7 +1757,7 @@ func (rb *RingBuffer) poll() error {
 	return nil
 }
 
-func (m *Module) InitPerfBuf(mapName string, eventsChan chan []byte, lostChan chan uint64, pageCnt int) (*PerfBuffer, error) {
+func (m *Module) InitPerfBuf(mapName string, eventsChan interface{}, lostChan chan uint64, pageCnt int) (*PerfBuffer, error) {
 	bpfMap, err := m.GetMap(mapName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init perf buffer: %v", err)
@@ -1801,12 +1801,21 @@ func (pb *PerfBuffer) Stop() {
 		// Tell the poll goroutine that it's time to exit
 		close(pb.stop)
 
+		var ch chan []byte
+		switch pb.eventsChan.(type) {
+		case chan []byte:
+			ch = pb.eventsChan.(chan []byte)
+		}
+
 		// The event and lost channels should be drained here since the consumer
 		// may have stopped at this point. Failure to drain it will
 		// result in a deadlock: the channel will fill up and the poll
 		// goroutine will block in the callback.
 		go func() {
-			for range pb.eventsChan {
+			if ch != nil {
+				for range ch {
+				}
+
 			}
 
 			if pb.lostChan != nil {
@@ -1820,7 +1829,9 @@ func (pb *PerfBuffer) Stop() {
 
 		// Close the channel -- this is useful for the consumer but
 		// also to terminate the drain goroutine above.
-		close(pb.eventsChan)
+		if ch != nil {
+			close(ch)
+		}
 		if pb.lostChan != nil {
 			close(pb.lostChan)
 		}
