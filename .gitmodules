@@ -1,3 +1,4 @@
 [submodule "libbpf"]
 	path = libbpf
-	url = https://github.com/libbpf/libbpf.git
+	url = https://github.com/senser-tech/libbpf.git
+	branch = grisha/perf_event_ordering
